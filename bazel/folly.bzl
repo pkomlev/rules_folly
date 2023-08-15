@@ -40,6 +40,7 @@ _folly_common_copts = [
 def folly_config(
         with_gflags,
         with_jemalloc,
+        with_snappy,
         with_bz2,
         with_lzma,
         with_lz4,
@@ -79,7 +80,7 @@ def folly_config(
         "@FOLLY_HAVE_LIBGLOG@": "1",
         "@FOLLY_HAVE_LIBLZ4@": str(with_lz4),
         "@FOLLY_HAVE_LIBLZMA@": str(with_lzma),
-        "@FOLLY_HAVE_LIBSNAPPY@": "0",
+        "@FOLLY_HAVE_LIBSNAPPY@": str(with_snappy),
         "@FOLLY_HAVE_LIBZ@": "1",
         "@FOLLY_HAVE_LIBZSTD@": str(with_zstd),
         "@FOLLY_HAVE_LIBBZ2@": str(with_bz2),
@@ -98,6 +99,7 @@ def folly_library(
         name,
         with_gflags = 1,
         with_jemalloc = 0,
+        with_snappy = 0,
         with_bz2 = 0,
         with_lzma = 0,
         with_lz4 = 0,
@@ -164,6 +166,7 @@ def folly_library(
         substitutions = folly_config(
             with_gflags,
             with_jemalloc,
+            with_snappy,
             with_bz2,
             with_lzma,
             with_lz4,
@@ -260,6 +263,7 @@ def folly_testing(name):
         hdrs = [
             "folly/container/test/F14TestUtil.h",
             "folly/container/test/TrackingTypes.h",
+            "folly/synchronization/test/Semaphore.h",
             "folly/experimental/test/CodingTestUtils.h",
             "folly/futures/test/TestExecutor.h",
             "folly/io/async/test/BlockingSocket.h",
@@ -278,7 +282,6 @@ def folly_testing(name):
             "folly/io/async/test/Util.h",
             "folly/logging/test/ConfigHelpers.h",
             "folly/logging/test/TestLogHandler.h",
-            "folly/synchronization/test/Semaphore.h",
             "folly/test/DeterministicSchedule.h",
             "folly/test/FBVectorTestUtil.h",
             "folly/test/SingletonTestStructs.h",
@@ -336,7 +339,6 @@ def folly_testing(name):
             "@boost//:thread",
         ],
     )
-
 
     cc_test(
         name = "folly_futures_retrying_test",
