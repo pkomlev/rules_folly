@@ -12,8 +12,9 @@ http_archive(
 load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
 rules_foreign_cc_dependencies()
 
-load("//bazel:folly_deps.bzl", "folly_deps")
+load("//bazel:folly_deps.bzl", "folly_deps", "folly_library")
 folly_deps()
+folly_library()
 
 load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
 boost_deps()

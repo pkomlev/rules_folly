@@ -1,5 +1,6 @@
-# Implements a macro folly_library() that the BUILD file can load.
-load("@rules_cc//cc:defs.bzl", "cc_library")
+""" Implements a macro folly_library() that the BUILD file can load."""
+
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 def _expand_template_impl(ctx):
     ctx.actions.expand_template(
@@ -17,6 +18,7 @@ expand_template = rule(
     },
 )
 
+# TODO(pkomlev): shouldn't this be in the toolchains?
 _folly_common_copts = [
     "-std=gnu++1z",
     "-fPIC",
@@ -240,26 +242,22 @@ def folly_testing(name):
     cc_library(
         name = "folly_test_util",
         srcs = [
-            "folly/test/common/TestMain.cpp",
-            "folly/test/FBVectorTestUtil.cpp",
-            "folly/test/DeterministicSchedule.cpp",
-            "folly/test/SingletonTestStructs.cpp",
-            "folly/test/SocketAddressTestHelper.cpp",
             "folly/experimental/test/CodingTestUtils.cpp",
             "folly/futures/test/TestExecutor.cpp",
             "folly/io/async/test/ScopedBoundPort.cpp",
             "folly/io/async/test/SocketPair.cpp",
-            "folly/logging/test/ConfigHelpers.cpp",
-            "folly/logging/test/TestLogHandler.cpp",
             "folly/io/async/test/SSLUtil.cpp",
             "folly/io/async/test/TestSSLServer.cpp",
             "folly/io/async/test/TimeUtil.cpp",
+            "folly/logging/test/ConfigHelpers.cpp",
+            "folly/logging/test/TestLogHandler.cpp",
+            "folly/test/common/TestMain.cpp",
+            "folly/test/DeterministicSchedule.cpp",
+            "folly/test/FBVectorTestUtil.cpp",
+            "folly/test/SingletonTestStructs.cpp",
+            "folly/test/SocketAddressTestHelper.cpp",
         ],
         hdrs = [
-            "folly/test/FBVectorTestUtil.h",
-            "folly/test/DeterministicSchedule.h",
-            "folly/test/SingletonTestStructs.h",
-            "folly/test/SocketAddressTestHelper.h",
             "folly/container/test/F14TestUtil.h",
             "folly/container/test/TrackingTypes.h",
             "folly/experimental/test/CodingTestUtils.h",
@@ -280,10 +278,138 @@ def folly_testing(name):
             "folly/io/async/test/Util.h",
             "folly/logging/test/ConfigHelpers.h",
             "folly/logging/test/TestLogHandler.h",
+            "folly/synchronization/test/Semaphore.h",
+            "folly/test/DeterministicSchedule.h",
+            "folly/test/FBVectorTestUtil.h",
+            "folly/test/SingletonTestStructs.h",
+            "folly/test/SocketAddressTestHelper.h",
         ],
         deps = [
             ":follybenchmark",
             "@com_github_google_glog//:glog",
             "@com_google_googletest//:gtest",
+        ],
+    )
+
+    # TODO(pavelkomlev): this does not follow the actual test structure in folly's
+    # CMakeLists.txt. However, at this point it is somewhat better than copy-paste
+    # or own implementation of the same tests.
+    cc_test(
+        name = "folly_test-futures",
+        timeout = "long",
+        srcs = [
+            "folly/futures/test/BarrierTest.cpp",
+            "folly/futures/test/CallbackLifetimeTest.cpp",
+            "folly/futures/test/CollectTest.cpp",
+            "folly/futures/test/ContextTest.cpp",
+            "folly/futures/test/CoreTest.cpp",
+            "folly/futures/test/EnsureTest.cpp",
+            "folly/futures/test/FilterTest.cpp",
+            "folly/futures/test/FutureSplitterTest.cpp",
+            "folly/futures/test/FutureTest.cpp",
+            "folly/futures/test/HeaderCompileTest.cpp",
+            "folly/futures/test/InterruptTest.cpp",
+            "folly/futures/test/MapTest.cpp",
+            "folly/futures/test/NonCopyableLambdaTest.cpp",
+            "folly/futures/test/PollTest.cpp",
+            "folly/futures/test/PromiseTest.cpp",
+            "folly/futures/test/ReduceTest.cpp",
+            "folly/futures/test/SelfDestructTest.cpp",
+            "folly/futures/test/SharedPromiseTest.cpp",
+            "folly/futures/test/TestExecutorTest.cpp",
+            "folly/futures/test/ThenCompileTest.h",
+            "folly/futures/test/ThenCompileTest.cpp",
+            "folly/futures/test/ThenTest.cpp",
+            "folly/futures/test/TimekeeperTest.cpp",
+            "folly/futures/test/TimesTest.cpp",
+            "folly/futures/test/UnwrapTest.cpp",
+            "folly/futures/test/ViaTest.cpp",
+            "folly/futures/test/WaitTest.cpp",
+            "folly/futures/test/WhenTest.cpp",
+            "folly/futures/test/WhileDoTest.cpp",
+            "folly/futures/test/WillEqualTest.cpp",
+            "folly/futures/test/WindowTest.cpp",
+        ],
+        deps = [
+            ":folly",
+            ":folly_test_util",
+            "@boost//:thread",
+        ],
+    )
+
+
+    cc_test(
+        name = "folly_futures_retrying_test",
+        timeout = "long",
+        srcs = [
+            "folly/futures/test/RetryingTest.cpp",
+        ],
+        deps = [
+            ":folly",
+            ":folly_test_util",
+            "@boost//:thread",
+        ],
+    )
+
+    cc_test(
+        name = "folly_test-cpu_id_test",
+        timeout = "long",
+        srcs = [
+            "folly/test/CpuIdTest.cpp",
+        ],
+        deps = [
+            ":folly",
+            ":folly_test_util",
+            "@boost//:thread",
+        ],
+    )
+
+    cc_test(
+        name = "folly_test-fingerprint_test",
+        timeout = "long",
+        srcs = [
+            "folly/test/FingerprintTest.cpp",
+        ],
+        deps = [
+            ":folly",
+            ":folly_test_util",
+            "@boost//:thread",
+        ],
+    )
+
+    cc_test(
+        name = "folly_test-checksum_test",
+        timeout = "long",
+        srcs = [
+            "folly/test/ChecksumTest.cpp",
+        ],
+        deps = [
+            ":folly",
+            ":folly_test_util",
+            "@boost//:thread",
+        ],
+    )
+
+    cc_test(
+        name = "folly_test-random_test",
+        timeout = "long",
+        srcs = [
+            "folly/test/RandomTest.cpp",
+        ],
+        deps = [
+            ":folly",
+            ":folly_test_util",
+            "@boost//:thread",
+        ],
+    )
+
+    cc_test(
+        name = "folly_test-small_vector_test",
+        srcs = [
+            "folly/test/small_vector_test.cpp",
+        ],
+        deps = [
+            ":folly",
+            ":folly_test_util",
         ],
     )

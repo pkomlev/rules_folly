@@ -73,7 +73,7 @@ def folly_deps():
         http_archive,
         name = "com_github_fmtlib_fmt",
         urls = ["https://github.com/fmtlib/fmt/archive/10.1.0.tar.gz"],
-         sha256 = "deb0a3ad2f5126658f2eefac7bf56a042488292de3d7a313526d667f3240ca0a",
+        sha256 = "deb0a3ad2f5126658f2eefac7bf56a042488292de3d7a313526d667f3240ca0a",
         strip_prefix = "fmt-10.1.0",
         build_file = "@com_github_pkomlev_rules_folly//third_party/fmtlib:fmtlib.BUILD",
     )
@@ -82,7 +82,7 @@ def folly_deps():
     maybe(
         http_archive,
         name = "com_github_nelhage_rules_boost",
-        sha256 = "a7c42df432fae9db0587ff778d84f9dc46519d67a984eff8c79ae35e45f277c1", 
+        sha256 = "a7c42df432fae9db0587ff778d84f9dc46519d67a984eff8c79ae35e45f277c1",
         strip_prefix = "rules_boost-{}".format(rules_boost_commit),
         urls = [
             "https://github.com/nelhage/rules_boost/archive/{}.tar.gz".format(rules_boost_commit),
@@ -106,6 +106,7 @@ def folly_deps():
         ],
     )
 
+def folly_library():
     folly_version = "2023.08.14.00"
     http_archive(
         name = "folly",
