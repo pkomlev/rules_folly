@@ -1,6 +1,7 @@
 """ Implements a macro folly_library() that the BUILD file can load."""
 
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("folly_tests.bzl", "folly_tests_def")
 
 def _expand_template_impl(ctx):
     ctx.actions.expand_template(
@@ -9,7 +10,7 @@ def _expand_template_impl(ctx):
         substitutions = ctx.attr.substitutions,
     )
 
-expand_template = rule(
+_expand_template = rule(
     implementation = _expand_template_impl,
     attrs = {
         "template": attr.label(mandatory = True, allow_single_file = True),
@@ -18,28 +19,15 @@ expand_template = rule(
     },
 )
 
-# TODO(pkomlev): shouldn't this be in the toolchains?
 _folly_common_copts = [
-    "-std=gnu++1z",
+    "-std=c++2a",
     "-fPIC",
-    "-finput-charset=UTF-8",
-    "-fsigned-char",
-    "-fopenmp",
-    "-faligned-new",
-    "-Wall",
-    "-Wno-deprecated",
-    "-Wno-deprecated-declarations",
-    "-Wno-sign-compare",
-    "-Wno-unused",
-    "-Wunused-label",
-    "-Wunused-result",
-    "-Wshadow-compatible-local",
-    "-Wno-noexcept-type",
 ]
 
 def folly_config(
         with_gflags,
         with_jemalloc,
+        with_snappy,
         with_bz2,
         with_lzma,
         with_lz4,
@@ -71,15 +59,13 @@ def folly_config(
         "@HAVE_VSNPRINTF_ERRORS@": "1",
         "@FOLLY_HAVE_SHADOW_LOCAL_WARNINGS@": "1",
         "@FOLLY_SUPPORT_SHARED_LIBRARY@": "1",
-        "@FOLLY_USE_LIBSTDCPP@": "1",
-        "@FOLLY_USE_LIBCPP@": "0",
         "@FOLLY_HAVE_LIBGFLAGS@": str(with_gflags),
         "@FOLLY_UNUSUAL_GFLAGS_NAMESPACE@": "0",
         "@FOLLY_GFLAGS_NAMESPACE@": "gflags",
         "@FOLLY_HAVE_LIBGLOG@": "1",
         "@FOLLY_HAVE_LIBLZ4@": str(with_lz4),
         "@FOLLY_HAVE_LIBLZMA@": str(with_lzma),
-        "@FOLLY_HAVE_LIBSNAPPY@": "0",
+        "@FOLLY_HAVE_LIBSNAPPY@": str(with_snappy),
         "@FOLLY_HAVE_LIBZ@": "1",
         "@FOLLY_HAVE_LIBZSTD@": str(with_zstd),
         "@FOLLY_HAVE_LIBBZ2@": str(with_bz2),
@@ -98,6 +84,7 @@ def folly_library(
         name,
         with_gflags = 1,
         with_jemalloc = 0,
+        with_snappy = 0,
         with_bz2 = 0,
         with_lzma = 0,
         with_lz4 = 0,
@@ -157,13 +144,14 @@ def folly_library(
         tools = ["@com_github_pkomlev_rules_folly//bazel:generate_config_in.sh"],
     )
 
-    expand_template(
+    _expand_template(
         name = "folly_config_h_unstripped",
         template = "folly/folly-config.h.in",
         out = "folly/folly-config.h.unstripped",
         substitutions = folly_config(
             with_gflags,
             with_jemalloc,
+            with_snappy,
             with_bz2,
             with_lzma,
             with_lz4,
@@ -185,13 +173,13 @@ def folly_library(
         tools = ["@com_github_pkomlev_rules_folly//bazel:strip_config_h.sh"],
     )
 
-    # CHECK_CXX_COMPILER_FLAG(-mpclmul COMPILER_HAS_M_PCLMUL)
     cc_library(
         name = "folly",
         hdrs = ["folly_config_h"] +
                native.glob(hdrs, exclude = common_excludes + hdrs_excludes),
         srcs = native.glob(srcs, exclude = common_excludes + srcs_excludes),
         copts = _folly_common_copts + select({
+            # TODO(pkomlev): rectify setting pclmul.
             "@com_github_pkomlev_rules_folly//bazel:linux_x86_64": ["-mpclmul"],
             "//conditions:default": [],
         }),
@@ -230,6 +218,7 @@ def folly_library(
     )
 
 def folly_testing(name):
+    """Generates tests and benchmark targets for folly library."""
     cc_library(
         name = "follybenchmark",
         srcs = ["folly/Benchmark.cpp"],
@@ -267,6 +256,7 @@ def folly_testing(name):
             "folly/io/async/test/MockAsyncSocket.h",
             "folly/io/async/test/MockAsyncSSLSocket.h",
             "folly/io/async/test/MockAsyncTransport.h",
+            "folly/net/test/MockNetOpsDispatcher.h",
             "folly/io/async/test/MockAsyncUDPSocket.h",
             "folly/io/async/test/MockTimeoutManager.h",
             "folly/io/async/test/ScopedBoundPort.h",
@@ -279,10 +269,12 @@ def folly_testing(name):
             "folly/logging/test/ConfigHelpers.h",
             "folly/logging/test/TestLogHandler.h",
             "folly/synchronization/test/Semaphore.h",
+            "folly/synchronization/test/Barrier.h",
             "folly/test/DeterministicSchedule.h",
             "folly/test/FBVectorTestUtil.h",
             "folly/test/SingletonTestStructs.h",
             "folly/test/SocketAddressTestHelper.h",
+            "folly/test/TestUtils.h",
         ],
         deps = [
             ":follybenchmark",
@@ -291,125 +283,45 @@ def folly_testing(name):
         ],
     )
 
-    # TODO(pavelkomlev): this does not follow the actual test structure in folly's
-    # CMakeLists.txt. However, at this point it is somewhat better than copy-paste
-    # or own implementation of the same tests.
-    cc_test(
-        name = "folly_test-futures",
-        timeout = "long",
-        srcs = [
-            "folly/futures/test/BarrierTest.cpp",
-            "folly/futures/test/CallbackLifetimeTest.cpp",
-            "folly/futures/test/CollectTest.cpp",
-            "folly/futures/test/ContextTest.cpp",
-            "folly/futures/test/CoreTest.cpp",
-            "folly/futures/test/EnsureTest.cpp",
-            "folly/futures/test/FilterTest.cpp",
-            "folly/futures/test/FutureSplitterTest.cpp",
-            "folly/futures/test/FutureTest.cpp",
-            "folly/futures/test/HeaderCompileTest.cpp",
-            "folly/futures/test/InterruptTest.cpp",
-            "folly/futures/test/MapTest.cpp",
-            "folly/futures/test/NonCopyableLambdaTest.cpp",
-            "folly/futures/test/PollTest.cpp",
-            "folly/futures/test/PromiseTest.cpp",
-            "folly/futures/test/ReduceTest.cpp",
-            "folly/futures/test/SelfDestructTest.cpp",
-            "folly/futures/test/SharedPromiseTest.cpp",
-            "folly/futures/test/TestExecutorTest.cpp",
-            "folly/futures/test/ThenCompileTest.h",
-            "folly/futures/test/ThenCompileTest.cpp",
-            "folly/futures/test/ThenTest.cpp",
-            "folly/futures/test/TimekeeperTest.cpp",
-            "folly/futures/test/TimesTest.cpp",
-            "folly/futures/test/UnwrapTest.cpp",
-            "folly/futures/test/ViaTest.cpp",
-            "folly/futures/test/WaitTest.cpp",
-            "folly/futures/test/WhenTest.cpp",
-            "folly/futures/test/WhileDoTest.cpp",
-            "folly/futures/test/WillEqualTest.cpp",
-            "folly/futures/test/WindowTest.cpp",
-        ],
-        deps = [
-            ":folly",
-            ":folly_test_util",
-            "@boost//:thread",
-        ],
-    )
+    folly_tests = folly_tests_def()
+    for path, tests in folly_tests.items():
+        for test in tests:
+            tags = test.get("tags", [])
+            if "BROKEN" in tags:
+                continue
 
+            srcs = []
+            for src in test.get("srcs", []):
+                srcs.append("folly/%s%s" % (path, src))
 
-    cc_test(
-        name = "folly_futures_retrying_test",
-        timeout = "long",
-        srcs = [
-            "folly/futures/test/RetryingTest.cpp",
-        ],
-        deps = [
-            ":folly",
-            ":folly_test_util",
-            "@boost//:thread",
-        ],
-    )
+            for hdr in test.get("hdrs", []):
+                if not hdr.startswith("folly/"):
+                    hdr = "folly/%s%s" % (path, hdr)
+                srcs.append(hdr)
 
-    cc_test(
-        name = "folly_test-cpu_id_test",
-        timeout = "long",
-        srcs = [
-            "folly/test/CpuIdTest.cpp",
-        ],
-        deps = [
-            ":folly",
-            ":folly_test_util",
-            "@boost//:thread",
-        ],
-    )
-
-    cc_test(
-        name = "folly_test-fingerprint_test",
-        timeout = "long",
-        srcs = [
-            "folly/test/FingerprintTest.cpp",
-        ],
-        deps = [
-            ":folly",
-            ":folly_test_util",
-            "@boost//:thread",
-        ],
-    )
-
-    cc_test(
-        name = "folly_test-checksum_test",
-        timeout = "long",
-        srcs = [
-            "folly/test/ChecksumTest.cpp",
-        ],
-        deps = [
-            ":folly",
-            ":folly_test_util",
-            "@boost//:thread",
-        ],
-    )
-
-    cc_test(
-        name = "folly_test-random_test",
-        timeout = "long",
-        srcs = [
-            "folly/test/RandomTest.cpp",
-        ],
-        deps = [
-            ":folly",
-            ":folly_test_util",
-            "@boost//:thread",
-        ],
-    )
-
-    cc_test(
-        name = "folly_test-small_vector_test",
-        srcs = [
-            "folly/test/small_vector_test.cpp",
-        ],
-        deps = [
-            ":folly",
-            ":folly_test_util",
-        ],
-    )
+            if test.get("benchmark", 0):
+                name = "benchmark-%s" % test["name"]
+                cc_binary(
+                    name = name,
+                    srcs = srcs,
+                    copts = _folly_common_copts,
+                    deps = [
+                        ":folly",
+                        ":folly_test_util",
+                        "@boost//:thread",
+                    ],
+                )
+            else:
+                name = "test-%s" % test["name"]
+                slow = "SLOW" in test.get("tags", [])
+                cc_test(
+                    name = name,
+                    srcs = srcs,
+                    deps = [
+                        ":folly",
+                        ":folly_test_util",
+                        "@boost//:thread",
+                    ],
+                    copts = _folly_common_copts,
+                    timeout = "long" if slow else "short",
+                )

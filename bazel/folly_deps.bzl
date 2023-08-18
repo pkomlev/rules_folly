@@ -107,6 +107,22 @@ def folly_deps():
     )
 
 def folly_library():
+    args = {
+        "with_snappy": 1 if native.existing_rule("com_github_google_snappy") else 0,
+        "with_gflags": 1,
+        "with_jemalloc": 0,
+        "with_bz2": 0,
+        "with_lzma": 0,
+        "with_lz4": 0,
+        "with_zstd": 0,
+        "with_unwind": 0,
+        "with_dwarf": 0,
+    }
+
+    flat_args = ""
+    for k, v in args.items():
+        flat_args = flat_args + ", %s = %d" % (k, v)
+
     folly_version = "2023.08.14.00"
     http_archive(
         name = "folly",
@@ -115,9 +131,9 @@ package(default_visibility = ["//visibility:public"])
 
 load("@com_github_pkomlev_rules_folly//bazel:folly.bzl", "folly_library", "folly_testing")
 
-folly_library("folly")
+folly_library("folly" %s)
 folly_testing("folly")
-""",
+""" % (flat_args),
         strip_prefix = "folly-{}".format(folly_version),
         sha256 = "63b0abc6860e91651484937fbb6e90a05dbf48b30133b56846e5e6b9d13c396c",
         urls = [
