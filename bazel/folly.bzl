@@ -24,16 +24,7 @@ _folly_common_copts = [
     "-fPIC",
 ]
 
-def folly_config(
-        with_gflags,
-        with_jemalloc,
-        with_snappy,
-        with_bz2,
-        with_lzma,
-        with_lz4,
-        with_zstd,
-        with_unwind,
-        with_dwarf):
+def _folly_configure(config):
     return {
         "@FOLLY_HAVE_PTHREAD@": "1",
         "@FOLLY_HAVE_PTHREAD_ATFORK@": "1",
@@ -59,19 +50,19 @@ def folly_config(
         "@HAVE_VSNPRINTF_ERRORS@": "1",
         "@FOLLY_HAVE_SHADOW_LOCAL_WARNINGS@": "1",
         "@FOLLY_SUPPORT_SHARED_LIBRARY@": "1",
-        "@FOLLY_HAVE_LIBGFLAGS@": str(with_gflags),
+        "@FOLLY_HAVE_LIBGFLAGS@": str(config.with_gflags),
         "@FOLLY_UNUSUAL_GFLAGS_NAMESPACE@": "0",
         "@FOLLY_GFLAGS_NAMESPACE@": "gflags",
         "@FOLLY_HAVE_LIBGLOG@": "1",
-        "@FOLLY_HAVE_LIBLZ4@": str(with_lz4),
-        "@FOLLY_HAVE_LIBLZMA@": str(with_lzma),
-        "@FOLLY_HAVE_LIBSNAPPY@": str(with_snappy),
+        "@FOLLY_HAVE_LIBLZ4@": str(config.with_lz4),
+        "@FOLLY_HAVE_LIBLZMA@": str(config.with_lzma),
+        "@FOLLY_HAVE_LIBSNAPPY@": str(config.with_snappy),
         "@FOLLY_HAVE_LIBZ@": "1",
-        "@FOLLY_HAVE_LIBZSTD@": str(with_zstd),
-        "@FOLLY_HAVE_LIBBZ2@": str(with_bz2),
-        "@FOLLY_USE_JEMALLOC@": str(with_jemalloc),
-        "@FOLLY_HAVE_LIBUNWIND@": str(with_unwind),
-        "@FOLLY_HAVE_DWARF@": str(with_dwarf),
+        "@FOLLY_HAVE_LIBZSTD@": str(config.with_zstd),
+        "@FOLLY_HAVE_LIBBZ2@": str(config.with_bz2),
+        "@FOLLY_USE_JEMALLOC@": str(config.with_jemalloc),
+        "@FOLLY_HAVE_LIBUNWIND@": str(config.with_unwind),
+        "@FOLLY_HAVE_DWARF@": str(config.with_dwarf),
         "@FOLLY_HAVE_ELF@": "1",
         "@FOLLY_HAVE_SWAPCONTEXT@": "1",
         "@FOLLY_HAVE_BACKTRACE@": "1",
@@ -80,8 +71,7 @@ def folly_config(
         "@FOLLY_HAVE_LIBRT@": "0",
     }
 
-def folly_library(
-        name,
+def folly_config(
         with_gflags = 1,
         with_jemalloc = 0,
         with_snappy = 0,
@@ -91,6 +81,28 @@ def folly_library(
         with_zstd = 0,
         with_unwind = 0,
         with_dwarf = 0):
+    return struct(
+        with_gflags = with_gflags,
+        with_jemalloc = with_jemalloc,
+        with_snappy = with_snappy,
+        with_bz2 = with_bz2,
+        with_lzma = with_lzma,
+        with_lz4 = with_lz4,
+        with_zstd = with_zstd,
+        with_unwind = with_unwind,
+        with_dwarf = with_dwarf,
+    )
+
+def folly_library(name = "folly", config = None):
+    """Declares folly library target, configured with a options provided.
+
+    Args:
+        name: library name, default is "folly".
+
+        config: library options, produced by folly_config(..) call. If `None`
+        provided, default set of options will be used.
+    """
+
     # Exclude tests, benchmarks, and other standalone utility executables from the
     # library sources. Test sources are listed separately below.
     common_excludes = [
@@ -148,17 +160,7 @@ def folly_library(
         name = "folly_config_h_unstripped",
         template = "folly/folly-config.h.in",
         out = "folly/folly-config.h.unstripped",
-        substitutions = folly_config(
-            with_gflags,
-            with_jemalloc,
-            with_snappy,
-            with_bz2,
-            with_lzma,
-            with_lz4,
-            with_zstd,
-            with_unwind,
-            with_dwarf,
-        ),
+        substitutions = _folly_configure(config),
     )
 
     native.genrule(
@@ -174,7 +176,7 @@ def folly_library(
     )
 
     cc_library(
-        name = "folly",
+        name = name,
         hdrs = ["folly_config_h"] +
                native.glob(hdrs, exclude = common_excludes + hdrs_excludes),
         srcs = native.glob(srcs, exclude = common_excludes + srcs_excludes),
@@ -214,10 +216,10 @@ def folly_library(
             "@openssl//:ssl",
         ] + ([
             "@com_github_gflags_gflags//:gflags",
-        ] if with_gflags else []),
+        ] if config.with_gflags else []),
     )
 
-def folly_testing(name):
+def folly_testing():
     """Generates tests and benchmark targets for folly library."""
     cc_library(
         name = "follybenchmark",
@@ -283,45 +285,40 @@ def folly_testing(name):
         ],
     )
 
-    folly_tests = folly_tests_def()
-    for path, tests in folly_tests.items():
-        for test in tests:
-            tags = test.get("tags", [])
-            if "BROKEN" in tags:
-                continue
+    for test in folly_tests_def():
+        if "BROKEN" in test.tags:
+            continue
 
-            srcs = []
-            for src in test.get("srcs", []):
-                srcs.append("folly/%s%s" % (path, src))
+        srcs = []
+        for src in test.srcs:
+            srcs.append("folly/%s%s" % (test.path, src))
 
-            for hdr in test.get("hdrs", []):
-                if not hdr.startswith("folly/"):
-                    hdr = "folly/%s%s" % (path, hdr)
-                srcs.append(hdr)
+        for hdr in test.hdrs:
+            srcs.append("folly/%s%s" % (test.path, hdr))
 
-            if test.get("benchmark", 0):
-                name = "benchmark-%s" % test["name"]
-                cc_binary(
-                    name = name,
-                    srcs = srcs,
-                    copts = _folly_common_copts,
-                    deps = [
-                        ":folly",
-                        ":folly_test_util",
-                        "@boost//:thread",
-                    ],
-                )
-            else:
-                name = "test-%s" % test["name"]
-                slow = "SLOW" in test.get("tags", [])
-                cc_test(
-                    name = name,
-                    srcs = srcs,
-                    deps = [
-                        ":folly",
-                        ":folly_test_util",
-                        "@boost//:thread",
-                    ],
-                    copts = _folly_common_copts,
-                    timeout = "long" if slow else "short",
-                )
+        if test.benchmark:
+            name = "benchmark-%s" % test.name
+            cc_binary(
+                name = name,
+                srcs = srcs,
+                copts = _folly_common_copts,
+                deps = [
+                    ":folly",
+                    ":folly_test_util",
+                    "@boost//:thread",
+                ],
+            )
+        else:
+            name = "test-%s" % test.name
+            slow = "SLOW" in test.tags
+            cc_test(
+                name = name,
+                srcs = srcs,
+                deps = [
+                    ":folly",
+                    ":folly_test_util",
+                    "@boost//:thread",
+                ],
+                copts = _folly_common_copts,
+                timeout = "long" if slow else "short",
+            )

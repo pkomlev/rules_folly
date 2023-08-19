@@ -61,10 +61,9 @@ folly_deps(with_gflags = 0)
 
 > TODO(pkomlev): the following section is largely out of sync, update.
 
-- include folly tests, as a part of the 
-- hermetic builds wrt to *ssl libraries
-- configurable: openssl or boringssl
-- clean-up copts 
+- openssl:
+ - hermetic builds (no dependency on local)
+ - make configurable: openssl or boringssl
 - macos builds
 - folly-python
-- share some love to experimental libraries (liburing etc.)
+- suppor experimental libraries (liburing etc.)
