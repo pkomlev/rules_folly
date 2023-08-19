@@ -121,7 +121,7 @@ def folly_library():
 
     flat_args = ""
     for k, v in args.items():
-        flat_args = flat_args + ", %s = %d" % (k, v)
+        flat_args = flat_args + "%s = %d, " % (k, v)
 
     folly_version = "2023.08.14.00"
     http_archive(
@@ -129,10 +129,11 @@ def folly_library():
         build_file_content = """
 package(default_visibility = ["//visibility:public"])
 
-load("@com_github_pkomlev_rules_folly//bazel:folly.bzl", "folly_library", "folly_testing")
+load("@com_github_pkomlev_rules_folly//bazel:folly.bzl", "folly_config", "folly_library", "folly_testing")
 
-folly_library("folly" %s)
-folly_testing("folly")
+_folly_config = folly_config(%s)
+folly_library(config = _folly_config)
+folly_testing()
 """ % (flat_args),
         strip_prefix = "folly-{}".format(folly_version),
         sha256 = "63b0abc6860e91651484937fbb6e90a05dbf48b30133b56846e5e6b9d13c396c",
