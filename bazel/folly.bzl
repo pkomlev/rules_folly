@@ -93,14 +93,17 @@ def folly_config(
         with_dwarf = with_dwarf,
     )
 
-def folly_library(name = "folly", config = None):
+def folly_library(name = "folly", config = None, enable_testing = False):
     """Declares folly library target, configured with a options provided.
 
     Args:
         name: library name, default is "folly".
 
-        config: library options, produced by folly_config(..) call. If `None`
-        provided, default set of options will be used.
+        config: library options, produced by folly_config(..) call. 
+        If `None` provided, default set of options will be used.
+
+        enable_testing: enables folly unit tests and benchmarks targets.
+        Use query "@folly//:test-*", "@folly//:benchmark-*" correspondingly.
     """
 
     # Exclude tests, benchmarks, and other standalone utility executables from the
@@ -219,8 +222,10 @@ def folly_library(name = "folly", config = None):
         ] if config.with_gflags else []),
     )
 
-def folly_testing():
-    """Generates tests and benchmark targets for folly library."""
+    if enable_testing:
+        _gen_folly_tests()
+
+def _gen_folly_tests():
     cc_library(
         name = "follybenchmark",
         srcs = ["folly/Benchmark.cpp"],
@@ -283,6 +288,7 @@ def folly_testing():
             "@com_github_google_glog//:glog",
             "@com_google_googletest//:gtest",
         ],
+        copts = _folly_common_copts,
     )
 
     for test in folly_tests_def():

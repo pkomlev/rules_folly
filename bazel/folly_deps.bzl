@@ -14,6 +14,14 @@ def folly_deps():
 
     maybe(
         http_archive,
+        name = "rules_foreign_cc",
+        sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51",
+        strip_prefix = "rules_foreign_cc-0.9.0",
+        url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
+    )
+
+    maybe(
+        http_archive,
         name = "com_github_gflags_gflags",
         sha256 = "34af2f15cf7367513b352bdcd2493ab14ce43692d2dcd9dfc499492966c64dcf",
         strip_prefix = "gflags-2.2.2",
@@ -29,6 +37,16 @@ def folly_deps():
         strip_prefix = "glog-0.6.0",
         urls = [
             "https://github.com/google/glog/archive/v0.6.0.tar.gz",
+        ],
+    )
+
+    maybe(
+        http_archive,
+        name = "com_google_googletest",
+        sha256 = "b4870bf121ff7795ba20d20bcdd8627b8e088f2d1dab299a031c1034eddc93d5",
+        strip_prefix = "googletest-release-1.11.0",
+        urls = [
+            "https://github.com/google/googletest/archive/release-1.11.0.tar.gz",
         ],
     )
 
@@ -106,7 +124,7 @@ def folly_deps():
         ],
     )
 
-def folly_library():
+def folly_library(enable_testing = False):
     args = {
         "with_snappy": 1 if native.existing_rule("com_github_google_snappy") else 0,
         "with_gflags": 1,
@@ -129,12 +147,11 @@ def folly_library():
         build_file_content = """
 package(default_visibility = ["//visibility:public"])
 
-load("@com_github_pkomlev_rules_folly//bazel:folly.bzl", "folly_config", "folly_library", "folly_testing")
+load("@com_github_pkomlev_rules_folly//bazel:folly.bzl", "folly_config", "folly_library")
 
 _folly_config = folly_config(%s)
-folly_library(config = _folly_config)
-folly_testing()
-""" % (flat_args),
+folly_library(config = _folly_config, enable_testing = %s)
+""" % (flat_args, "True" if enable_testing else "False"),
         strip_prefix = "folly-{}".format(folly_version),
         sha256 = "63b0abc6860e91651484937fbb6e90a05dbf48b30133b56846e5e6b9d13c396c",
         urls = [
