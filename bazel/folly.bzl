@@ -19,10 +19,7 @@ _expand_template = rule(
     },
 )
 
-_folly_common_copts = [
-    "-std=c++2a",
-    "-fPIC",
-]
+_folly_common_copts = ["-std=c++2a"]
 
 def _folly_configure(config):
     return {

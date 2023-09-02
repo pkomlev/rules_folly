@@ -15,8 +15,9 @@ cmake(
         "EVENT__DISABLE_MBEDTLS": "on",
         "EVENT__DISABLE_REGRESS": "on",
         "EVENT__DISABLE_TESTS": "on",
-        "EVENT__LIBRARY_TYPE": "STATIC",
+        "EVENT__LIBRARY_TYPE": "SHARED",
         "_GNU_SOURCE": "on",
     },
+    out_shared_libs	= ["libevent.so"],
     lib_source = ":all",
 )
