@@ -1,16 +1,35 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
+def folly_openssl_hack():
+    maybe(
+        native.new_local_repository,
+        name = "openssl",
+        path = "/usr/include",
+        build_file = "@com_github_pkomlev_rules_folly//third_party/syslibs:openssl.BUILD",
+    )
+
 def folly_deps():
     """folly_deps sets up depencencies' git repositories folly depends on."""
 
-    # TODO(pkomlev): add the following dependencies:
-    # - lz4, lzma, xz compressions
-    # - folly python support
-    # - liburing et al.
+    # NOTE(pkomlev): for good and bad boost and folly share several dependencies
+    # and they can be found below. Here is it ensured that the repositores are
+    # availabled (usually, result of boost_deps() run in the WORKSPACE file).
+    boost_deps = [
+        "zlib",
+        "org_bzip_bzip2",
+        "org_lzma_lzma",
+        "com_github_facebook_zstd",
+    ]
 
-    # TODO(pkomlev): the OpenSLL dependency is not hermetic, `libssl-dev` should
-    # should be installed on the host running bazel builds.
+    # TODO(pkomlev): the OpenSLL dependency is not hermetic and sort of different
+    # from the one used with https://github.com/nelhage/rules_boost, require repo
+    # to be initialized ahead of the folly_deps call, but the actual version must
+    # come from local_repository(...). The above defined folly_openssl_hack can
+    # be used.
+    for name in boost_deps + ["openssl"]:
+        if not native.existing_rule(name):
+            fail("not available repository ", name)
 
     maybe(
         http_archive,
@@ -60,15 +79,6 @@ def folly_deps():
 
     maybe(
         http_archive,
-        name = "zlib",
-        strip_prefix = "zlib-1.2.13",
-        build_file = "@com_github_pkomlev_rules_folly//third_party/zlib:zlib.BUILD",
-        sha256 = "1525952a0a567581792613a9723333d7f8cc20b87a81f920fb8bc7e3f2251428",
-        urls = ["https://github.com/madler/zlib/archive/v1.2.13.tar.gz"],
-    )
-
-    maybe(
-        http_archive,
         name = "com_github_google_snappy",
         build_file = "@com_github_pkomlev_rules_folly//third_party/snappy:snappy.BUILD",
         strip_prefix = "snappy-1.1.10",
@@ -96,24 +106,6 @@ def folly_deps():
         build_file = "@com_github_pkomlev_rules_folly//third_party/fmtlib:fmtlib.BUILD",
     )
 
-    rules_boost_commit = "cfa585b1b5843993b70aa52707266dc23b3282d0"
-    maybe(
-        http_archive,
-        name = "com_github_nelhage_rules_boost",
-        sha256 = "a7c42df432fae9db0587ff778d84f9dc46519d67a984eff8c79ae35e45f277c1",
-        strip_prefix = "rules_boost-{}".format(rules_boost_commit),
-        urls = [
-            "https://github.com/nelhage/rules_boost/archive/{}.tar.gz".format(rules_boost_commit),
-        ],
-    )
-
-    maybe(
-        native.new_local_repository,
-        name = "openssl",
-        path = "/usr/include",
-        build_file = "@com_github_pkomlev_rules_folly//third_party/syslibs:openssl.BUILD",
-    )
-
     gtest_version = "1.14.0"
     maybe(
         http_archive,
@@ -126,13 +118,8 @@ def folly_deps():
 
 def folly_library(enable_testing = False):
     args = {
-        "with_snappy": 1 if native.existing_rule("com_github_google_snappy") else 0,
-        "with_gflags": 1,
         "with_jemalloc": 0,
-        "with_bz2": 0,
-        "with_lzma": 0,
         "with_lz4": 0,
-        "with_zstd": 0,
         "with_unwind": 0,
         "with_dwarf": 0,
     }
@@ -141,7 +128,7 @@ def folly_library(enable_testing = False):
     for k, v in args.items():
         flat_args = flat_args + "%s = %d, " % (k, v)
 
-    folly_version = "2023.08.14.00"
+    folly_version = "2023.08.28.00"
     http_archive(
         name = "folly",
         build_file_content = """
@@ -153,7 +140,7 @@ _folly_config = folly_config(%s)
 folly_library(config = _folly_config, enable_testing = %s)
 """ % (flat_args, "True" if enable_testing else "False"),
         strip_prefix = "folly-{}".format(folly_version),
-        sha256 = "63b0abc6860e91651484937fbb6e90a05dbf48b30133b56846e5e6b9d13c396c",
+        sha256 = "6b774054d987e0e34432d6745a10c67db8d43ef4a6d841328ad8eb35144c12c0",
         urls = [
             "https://github.com/facebook/folly/archive/v{}.tar.gz".format(folly_version),
         ],

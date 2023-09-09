@@ -47,16 +47,16 @@ def _folly_configure(config):
         "@HAVE_VSNPRINTF_ERRORS@": "1",
         "@FOLLY_HAVE_SHADOW_LOCAL_WARNINGS@": "1",
         "@FOLLY_SUPPORT_SHARED_LIBRARY@": "1",
-        "@FOLLY_HAVE_LIBGFLAGS@": str(config.with_gflags),
+        "@FOLLY_HAVE_LIBGFLAGS@": "1",
         "@FOLLY_UNUSUAL_GFLAGS_NAMESPACE@": "0",
         "@FOLLY_GFLAGS_NAMESPACE@": "gflags",
         "@FOLLY_HAVE_LIBGLOG@": "1",
         "@FOLLY_HAVE_LIBLZ4@": str(config.with_lz4),
-        "@FOLLY_HAVE_LIBLZMA@": str(config.with_lzma),
-        "@FOLLY_HAVE_LIBSNAPPY@": str(config.with_snappy),
+        "@FOLLY_HAVE_LIBLZMA@": "1",
+        "@FOLLY_HAVE_LIBSNAPPY@": "1",
         "@FOLLY_HAVE_LIBZ@": "1",
-        "@FOLLY_HAVE_LIBZSTD@": str(config.with_zstd),
-        "@FOLLY_HAVE_LIBBZ2@": str(config.with_bz2),
+        "@FOLLY_HAVE_LIBZSTD@": "1",
+        "@FOLLY_HAVE_LIBBZ2@": "1",
         "@FOLLY_USE_JEMALLOC@": str(config.with_jemalloc),
         "@FOLLY_HAVE_LIBUNWIND@": str(config.with_unwind),
         "@FOLLY_HAVE_DWARF@": str(config.with_dwarf),
@@ -69,23 +69,13 @@ def _folly_configure(config):
     }
 
 def folly_config(
-        with_gflags = 1,
         with_jemalloc = 0,
-        with_snappy = 0,
-        with_bz2 = 0,
-        with_lzma = 0,
         with_lz4 = 0,
-        with_zstd = 0,
         with_unwind = 0,
         with_dwarf = 0):
     return struct(
-        with_gflags = with_gflags,
         with_jemalloc = with_jemalloc,
-        with_snappy = with_snappy,
-        with_bz2 = with_bz2,
-        with_lzma = with_lzma,
         with_lz4 = with_lz4,
-        with_zstd = with_zstd,
         with_unwind = with_unwind,
         with_dwarf = with_dwarf,
     )
@@ -96,7 +86,7 @@ def folly_library(name = "folly", config = None, enable_testing = False):
     Args:
         name: library name, default is "folly".
 
-        config: library options, produced by folly_config(..) call. 
+        config: library options, produced by folly_config(..) call.
         If `None` provided, default set of options will be used.
 
         enable_testing: enables folly unit tests and benchmarks targets.
@@ -214,9 +204,8 @@ def folly_library(name = "folly", config = None, enable_testing = False):
             "@com_github_fmtlib_fmt//:fmt",
             "@double-conversion//:double-conversion",
             "@openssl//:ssl",
-        ] + ([
             "@com_github_gflags_gflags//:gflags",
-        ] if config.with_gflags else []),
+        ],
     )
 
     if enable_testing:
@@ -258,6 +247,7 @@ def _gen_folly_tests():
             "folly/io/async/test/BlockingSocket.h",
             "folly/io/async/test/MockAsyncServerSocket.h",
             "folly/io/async/test/MockAsyncSocket.h",
+            "folly/io/async/test/CallbackStateEnum.h",
             "folly/io/async/test/MockAsyncSSLSocket.h",
             "folly/io/async/test/MockAsyncTransport.h",
             "folly/net/test/MockNetOpsDispatcher.h",
