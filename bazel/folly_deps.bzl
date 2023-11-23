@@ -140,7 +140,7 @@ _folly_config = folly_config(%s)
 folly_library(config = _folly_config, enable_testing = %s)
 """ % (flat_args, "True" if enable_testing else "False"),
         strip_prefix = "folly-{}".format(folly_version),
-        sha256 = "5e8730c52857d44ddbf46a819f588e036d5e6b3f5dcc7129d7bd81c372430d35",
+        sha256 = "638cd91cb69f298ca1d297003933f48453681d4f68242311eb31ef2a06ee9f70",
         urls = [
             "https://github.com/facebook/folly/archive/v{}.tar.gz".format(folly_version),
         ],
