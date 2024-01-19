@@ -128,7 +128,7 @@ def folly_library(enable_testing = False):
     for k, v in args.items():
         flat_args = flat_args + "%s = %d, " % (k, v)
 
-    folly_version = "2023.08.28.00"
+    folly_version = "2023.11.20.00"
     http_archive(
         name = "folly",
         build_file_content = """
@@ -140,7 +140,7 @@ _folly_config = folly_config(%s)
 folly_library(config = _folly_config, enable_testing = %s)
 """ % (flat_args, "True" if enable_testing else "False"),
         strip_prefix = "folly-{}".format(folly_version),
-        sha256 = "6b774054d987e0e34432d6745a10c67db8d43ef4a6d841328ad8eb35144c12c0",
+        sha256 = "638cd91cb69f298ca1d297003933f48453681d4f68242311eb31ef2a06ee9f70",
         urls = [
             "https://github.com/facebook/folly/archive/v{}.tar.gz".format(folly_version),
         ],
